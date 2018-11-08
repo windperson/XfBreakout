@@ -2,13 +2,24 @@
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:XfBreakout"
+             xmlns:skia="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
+             xmlns:ios="clr-namespace:Xamarin.Forms.PlatformConfiguration.iOSSpecific;assembly=Xamarin.Forms.Core" 
+             ios:Page.UseSafeArea="true"
              x:Class="XfBreakout.MainPage">
 
-    <StackLayout>
-        <!-- Place new controls here -->
-        <Label Text="Welcome to Xamarin.Forms!" 
-           HorizontalOptions="Center"
-           VerticalOptions="CenterAndExpand" />
-    </StackLayout>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <skia:SKGLView PaintSurface="SKGLView_OnPaintSurface"  
+                       EnableTouchEvents="True"
+                       Touch="SKGLView_OnTouch"/>
+        <StackLayout Grid.Row="1" Orientation="Horizontal" HorizontalOptions="FillAndExpand">
+            <Button Text="&lt;&lt;" HorizontalOptions="CenterAndExpand" FontAttributes="Bold"  Clicked="LeftButton_OnClicked" />
+            <Button Text="Menu" x:Name="MenuBtn" HorizontalOptions="CenterAndExpand" FontAttributes="Bold" Clicked="MenuButton_OnClicked" />
+            <Button Text="&gt;&gt;" HorizontalOptions="CenterAndExpand" FontAttributes="Bold" Clicked="RightButton_OnClicked" />
+        </StackLayout>
+    </Grid>
 
 </ContentPage>
