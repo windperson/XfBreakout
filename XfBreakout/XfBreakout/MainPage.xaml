@@ -12,7 +12,8 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <skia:SKGLView PaintSurface="SKGLView_OnPaintSurface"  
+        <skia:SKGLView x:Name="SkglView" 
+                       PaintSurface="SKGLView_OnPaintSurface"  
                        EnableTouchEvents="True"
                        Touch="SKGLView_OnTouch"/>
         <StackLayout Grid.Row="1" Orientation="Horizontal" HorizontalOptions="FillAndExpand">
