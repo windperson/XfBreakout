@@ -14,38 +14,142 @@ namespace XfBreakout
     public partial class MainPage : ContentPage
     {
         private const double DefaultFrameRate = 1.0 / 30;
-        private const string str = "SCORE: 0000";
 
         private bool _pageIsActive;
 
-        private SKRect _canvasRect;
+        private SKRect _canvasRect = SKRect.Empty;
         private float _scaleFactor;
+        private bool _isFirstRender = true;
 
+        private GameStatus _gameStatus;
+
+        #region Score Text Game Data
+        private readonly SKPaint _scoreTextPaint = new SKPaint()
+        {
+            Color = SKColors.Chocolate,
+            IsAntialias = true,
+            IsStroke = false,
+            TextSize = 30.0f
+        };
+
+        private readonly (int X, int Y) _scoreTextPoint = (X: 10, Y: 50);
+        private int _score = 0;
+        private const string ScoreHeaderText = "SCORE:";
+        #endregion
+
+        #region PressStart Text Game Data
+        private readonly SKPaint _pressStartTextPaint = new SKPaint()
+        {
+            Color = SKColors.DarkGray,
+            IsAntialias = true,
+            IsStroke = false,
+            TextSize = 40.0f,
+            TextAlign = SKTextAlign.Center
+        };
+        private const string PressStartText = "Press Start";
+        #endregion
+
+        #region GamePause Text Game Data
+        private readonly SKPaint _gamePauseTextPaint = new SKPaint()
+        {
+            Color = SKColors.Indigo,
+            IsAntialias = true,
+            IsStroke = false,
+            TextSize = 40.0f,
+            TextAlign = SKTextAlign.Center
+        };
+        private const string GamePauseText = "Game Paused";
+        #endregion
+
+        #region GameClear Text Game Data
+        private readonly SKPaint _gameClearTextPaint = new SKPaint()
+        {
+            Color = SKColors.Black,
+            IsAntialias = true,
+            IsStroke = false,
+            TextSize = 40.0f,
+            TextAlign = SKTextAlign.Center
+        };
+        private const string GameClearText = "Game Clear";
+        #endregion
+
+        #region GameOver Text Game Data
+        private readonly SKPaint _gameOverTextPaint = new SKPaint()
+        {
+            Color = SKColors.Red,
+            IsAntialias = true,
+            IsStroke = false,
+            TextSize = 40.0f,
+            TextAlign = SKTextAlign.Center
+        };
+        private const string GameOverText = "Game Over";
+        #endregion
+
+
+        #region Brick Game Data
+        private const int DefaultRows = 5;
+        private const int DefaultCols = 4;
+        private Brick[,] _bricks;
+        private const float DefaultBrickWidth = 60.0f;
+        private const float DefaultBrickHeight = 30.0f;
+        private const float topSpacing = 50;
+        private const float rowPadding = 5;
+        private const float colPadding = 5;
+
+        private bool _isBrickLayoutComputed;
+
+        private readonly Random _rand = new Random(DateTime.Now.Millisecond);
+        #endregion
+
+        #region Ball Game Data
         private (float? X, float? Y) _ballCenter;
         private const float BallRadius = 10.0f;
         private readonly SKPaint _ballPaint = new SKPaint { Color = SKColors.Black, Style = SKPaintStyle.Fill };
-        private const float DefaultBallHorizontalSpeed = 0.2f;
-        private const float DefaultBallVerticalSpeed = 0.2f;
+        private const float DefaultBallHorizontalSpeed = 5f;
+        private const float DefaultBallVerticalSpeed = 5f;
+        private (int X, int Y) _ballSpeedVector = (X: 1, Y: 1);
+        #endregion
 
+        #region Paddle Game Data
+        private const int PaddleWidth = 100;
+        private const int PaddleHeight = 40;
         private SKRect _paddleRect = SKRect.Empty;
         private readonly SKPaint _paddlePaint = new SKPaint { Color = SKColors.DarkGreen };
-        private bool _is1stTime = true;
         private bool _isPaddleDragging;
-
         private const float DefaultLeftRightButtonClickPaddleSpeed = 0.2f;
+        #endregion
+
 
         public MainPage()
         {
             InitializeComponent();
+            InitBricks(DefaultRows, DefaultCols);
         }
 
-        protected override void OnAppearing()
+        private void InitBricks(int rows, int cols)
+        {
+            _isBrickLayoutComputed = false;
+            _bricks = new Brick[DefaultRows, DefaultCols];
+            for (var i = 0; i < rows; i++)
+            {
+                for (var j = 0; j < cols; j++)
+                {
+                    _bricks[i, j] = new Brick
+                    {
+                        Paint = _rand.Next(0, 2) == 1
+                        ? new SKPaint { Color = SKColors.Blue }
+                        : new SKPaint { Color = SKColors.Green }
+                    };
+                }
+            }
+        }
+
+        protected override async void OnAppearing()
         {
             base.OnAppearing();
             _pageIsActive = true;
-#pragma warning disable 4014
-            AnimationLoop();
-#pragma warning restore 4014
+
+            await AnimationLoop();
         }
 
         protected override void OnDisappearing()
@@ -56,19 +160,120 @@ namespace XfBreakout
 
         private async Task AnimationLoop()
         {
-            Util.Log("Start animation loop");
             while (_pageIsActive)
             {
-                await GameTicker();
+                GameTicker();
                 SkglView.InvalidateSurface();
                 await Task.Delay(TimeSpan.FromSeconds(DefaultFrameRate));
             }
-            Util.Log("Stop animation loop");
         }
 
-        private async Task GameTicker()
+        private void GameTicker()
         {
+            if (_gameStatus != GameStatus.Playing)
+            {
+                return;
+            }
 
+            if (_canvasRect.IsEmpty || _paddleRect.IsEmpty
+                                    || !(_ballCenter.X.HasValue && _ballCenter.Y.HasValue))
+            {
+                return;
+            }
+
+            _ballCenter.X += DefaultBallHorizontalSpeed * _ballSpeedVector.X;
+            _ballCenter.Y += DefaultBallVerticalSpeed * _ballSpeedVector.Y;
+
+            //check if hit left or right walls
+            if (_ballCenter.X - BallRadius <= 0 || _ballCenter.X + BallRadius >= _canvasRect.Width)
+            {
+                _ballSpeedVector.X = -_ballSpeedVector.X;
+            }
+
+            //check if hit top wall
+            if (_ballCenter.Y - BallRadius <= 0)
+            {
+                _ballSpeedVector.Y = -_ballSpeedVector.Y;
+            }
+
+            //check if ball fail down out
+            if (_ballCenter.Y + BallRadius >= _canvasRect.Height)
+            {
+                _gameStatus = GameStatus.GameOver;
+                LeftBtn.IsEnabled = false;
+                RightBtn.IsEnabled = false;
+                GameStatusBtn.Text = "Retry";
+                return;
+            }
+
+            var ballHitZone = SKRect.Create(
+                new SKPoint(_ballCenter.X.Value, _ballCenter.Y.Value), new SKSize(BallRadius * 2, BallRadius * 2));
+
+            //check if ball hit paddle
+            if (_paddleRect.IntersectsWithInclusive(ballHitZone))
+            {
+                _ballSpeedVector.Y = -1 * Math.Abs(_ballSpeedVector.Y);
+            }
+
+            var brickCollideCount = 0;
+            for (var i = 0; i < DefaultRows; i++)
+            {
+                for (var j = 0; j < DefaultCols; j++)
+                {
+                    var brick = _bricks[i, j];
+
+                    if (brick.Collided)
+                    {
+                        continue;
+                    }
+
+                    if (brick.Rect.IntersectsWithInclusive(ballHitZone))
+                    {
+                        brick.Collided = true;
+                        brickCollideCount++;
+                        _ballSpeedVector.Y = -_ballSpeedVector.Y;
+                        break;
+                    }
+                }
+            }
+
+            _score += brickCollideCount;
+
+            //check if game cleared
+            var isGameClear = true;
+            for (var i = 0; i < DefaultRows; i++)
+            {
+                for (var j = 0; j < DefaultCols; j++)
+                {
+                    var brick = _bricks[i, j];
+
+                    if (brick.Collided) continue;
+                    isGameClear = false;
+                    break;
+                }
+            }
+
+            if (isGameClear)
+            {
+                _gameStatus = GameStatus.GameClear;
+                LeftBtn.IsEnabled = false;
+                RightBtn.IsEnabled = false;
+                GameStatusBtn.Text = "Replay";
+            }
+
+        }
+
+        private void ResetGameData()
+        {
+            InitBricks(DefaultRows, DefaultCols);
+
+            _paddleRect = SKRect.Empty;
+            _isPaddleDragging = false;
+
+            _ballCenter = (X: null, Y: null);
+            _ballSpeedVector = (X: 1, Y: 1);
+
+            _score = 0;
         }
 
 
@@ -80,16 +285,14 @@ namespace XfBreakout
             }
 
             var canvas = e.Surface.Canvas;
-            GRBackendRenderTargetDesc info = e.RenderTarget;
-
             canvas.Clear(SKColors.White);
 
-
+            var info = e.RenderTarget;
             _scaleFactor = (float)(info.Width / container.Width);
-            if (_is1stTime)
+            if (_isFirstRender)
             {
                 Util.Log($"scale = {_scaleFactor}");
-                _is1stTime = false;
+                _isFirstRender = false;
             }
 
             canvas.Scale(_scaleFactor);
@@ -99,10 +302,10 @@ namespace XfBreakout
             }
 
             DrawScore(canvas);
-            DrawBricks(canvas, info);
+            DrawBricks(canvas);
             DrawPaddle(canvas);
             DrawBall(canvas);
-
+            DrawGameStatus(canvas);
         }
 
         private void DrawBall(SKCanvas canvas)
@@ -121,43 +324,105 @@ namespace XfBreakout
         {
             if (_paddleRect.IsEmpty)
             {
-                _paddleRect = SKRect.Create(80, 25);
-                var initX = (canvas.LocalClipBounds.Width - _paddleRect.Width) / 2;
-                var initY = canvas.LocalClipBounds.Height - _paddleRect.Height - 40;
+                var canvasRect = canvas.LocalClipBounds;
+                _paddleRect = SKRect.Create(PaddleWidth, PaddleHeight);
+                var initX = (canvasRect.Width - _paddleRect.Width) / 2;
+                var initY = canvasRect.Height - _paddleRect.Height - PaddleWidth / 2;
 
                 Util.Log($"paddle init on ({initX}, {initY})");
                 _paddleRect.Location = new SKPoint(initX, initY);
             }
 
-            canvas.DrawRect(_paddleRect, _paddlePaint);
+            canvas.DrawRoundRect(_paddleRect, new SKSize(7, 7), _paddlePaint);
         }
 
-        private void DrawBricks(SKCanvas canvas, GRBackendRenderTargetDesc info)
+        private void DrawBricks(SKCanvas canvas)
         {
-
-
-        }
-
-        private static void DrawScore(SKCanvas canvas)
-        {
-            var textPaint = new SKPaint()
+            if (_bricks == null)
             {
-                Color = SKColors.Chocolate,
-                IsAntialias = true,
-                IsStroke = false,
-                TextSize = 30.0f
-            };
+                return;
+            }
 
-            canvas.DrawText(str, 10, 50, textPaint);
+            float baseSlotWidth = 0.0f, baseSlotHeight = 0.0f, leftSpacing = 0.0f;
+
+            if (!_isBrickLayoutComputed)
+            {
+                var canvasRect = canvas.LocalClipBounds;
+
+                baseSlotWidth = (canvasRect.Width - rowPadding * 2) / (DefaultCols + 1);
+                leftSpacing = (canvasRect.Width - baseSlotWidth * (DefaultCols + 1)) / 2;
+                if (leftSpacing < 0)
+                {
+                    leftSpacing = 0;
+                }
+                baseSlotHeight = (canvasRect.Height / 2.0f) / (DefaultRows + 1);
+            }
+
+            for (var i = 0; i < DefaultRows; i++)
+            {
+                for (var j = 0; j < DefaultCols; j++)
+                {
+                    var brick = _bricks[i, j];
+                    if (brick.Collided)
+                    {
+                        continue;
+                    }
+                    // |---x---x---x---x---|
+                    if (brick.Rect.IsEmpty)
+                    {
+                        var midX = baseSlotWidth * i + rowPadding + leftSpacing;
+                        var midY = baseSlotHeight * j + colPadding + topSpacing;
+                        _bricks[i, j].Rect = SKRect.Create(midX, midY,
+                            DefaultBrickWidth, DefaultBrickHeight);
+                    }
+                    canvas.DrawRect(brick.Rect, brick.Paint);
+                }
+            }
+
+            _isBrickLayoutComputed = true;
+        }
+
+        private void DrawScore(SKCanvas canvas)
+        {
+            var score = $"{ScoreHeaderText} {_score:D2}";
+            canvas.DrawText(score, _scoreTextPoint.X, _scoreTextPoint.Y, _scoreTextPaint);
+        }
+
+        private void DrawGameStatus(SKCanvas canvas)
+        {
+            if (_gameStatus == GameStatus.Playing) { return; }
+            var rect = canvas.LocalClipBounds;
+
+            switch (_gameStatus)
+            {
+                case GameStatus.Initial:
+                case GameStatus.UnStart:
+                    canvas.DrawText(PressStartText, rect.MidX, rect.MidY, _pressStartTextPaint);
+                    break;
+                case GameStatus.Paused:
+                    canvas.DrawText(GamePauseText, rect.MidX, rect.MidY, _gamePauseTextPaint);
+                    break;
+                case GameStatus.GameClear:
+                    canvas.DrawText(GameClearText, rect.MidX, rect.MidY, _gameClearTextPaint);
+                    break;
+                case GameStatus.GameOver:
+                    canvas.DrawText(GameOverText, rect.MidX, rect.MidY, _gameOverTextPaint);
+                    break;
+            }
         }
 
         private void SKGLView_OnTouch(object sender, SKTouchEventArgs e)
         {
+            if (_gameStatus != GameStatus.Playing)
+            {
+                _isPaddleDragging = false;
+                return;
+            }
+
             Util.Log("touch event triggered.");
             if (_canvasRect.IsEmpty || _paddleRect.IsEmpty)
             {
                 return;
-
             }
             switch (e.ActionType)
             {
@@ -226,6 +491,7 @@ namespace XfBreakout
             }
 
             _paddleRect = SKRect.Create(newX, _paddleRect.Top, _paddleRect.Width, _paddleRect.Height);
+            SkglView.InvalidateSurface();
         }
 
         private void RightButton_OnClicked(object sender, EventArgs e)
@@ -242,11 +508,56 @@ namespace XfBreakout
             }
 
             _paddleRect = SKRect.Create(newX, _paddleRect.Top, _paddleRect.Width, _paddleRect.Height);
+            SkglView.InvalidateSurface();
         }
 
-        private void MenuButton_OnClicked(object sender, EventArgs e)
+        private void StartButton_OnClicked(object sender, EventArgs e)
         {
+            switch (_gameStatus)
+            {
+                case GameStatus.Initial:
+                    _gameStatus = GameStatus.Playing;
+                    LeftBtn.IsEnabled = true;
+                    RightBtn.IsEnabled = true;
+                    GameStatusBtn.Text = "Pause";
+                    break;
 
+                case GameStatus.UnStart:
+                    _gameStatus = GameStatus.Playing;
+                    LeftBtn.IsEnabled = true;
+                    RightBtn.IsEnabled = true;
+                    GameStatusBtn.Text = "Pause";
+                    ResetGameData();
+                    break;
+
+                case GameStatus.Playing:
+                    _gameStatus = GameStatus.Paused;
+                    LeftBtn.IsEnabled = false;
+                    RightBtn.IsEnabled = false;
+                    GameStatusBtn.Text = "Resume";
+                    break;
+
+                case GameStatus.Paused:
+                    _gameStatus = GameStatus.Playing;
+                    LeftBtn.IsEnabled = true;
+                    RightBtn.IsEnabled = true;
+                    GameStatusBtn.Text = "Pause";
+                    break;
+
+                case GameStatus.GameClear:
+                    _gameStatus = GameStatus.UnStart;
+                    LeftBtn.IsEnabled = false;
+                    RightBtn.IsEnabled = false;
+                    GameStatusBtn.Text = "Replay";
+                    break;
+
+                case GameStatus.GameOver:
+                    _gameStatus = GameStatus.UnStart;
+                    LeftBtn.IsEnabled = false;
+                    RightBtn.IsEnabled = false;
+                    GameStatusBtn.Text = "Start";
+                    break;
+            }
         }
     }
 }
