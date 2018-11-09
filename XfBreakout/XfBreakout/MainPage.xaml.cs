@@ -129,7 +129,8 @@ namespace XfBreakout
         public MainPage()
         {
             InitializeComponent();
-            InitBricks(DefaultRows, DefaultCols);
+
+            ResetGameData();
             InitUiEventStream();
             InitAnimationLoopStream();
 
@@ -143,12 +144,6 @@ namespace XfBreakout
         ~MainPage()
         {
             _subscriptions.ForEach(sub => sub.Dispose());
-        }
-
-        protected override void OnAppearing()
-        {
-            base.OnAppearing();
-
         }
 
         private void InitDrawSubscription()
@@ -537,7 +532,15 @@ namespace XfBreakout
             _isPaddleDragging = false;
 
             _ballCenter = (X: null, Y: null);
-            _ballSpeedVector = (X: 1, Y: 1);
+            var ran = _rand.Next() % 2;
+            if (ran > 0)
+            {
+                _ballSpeedVector = (X: 1, Y: 1);
+            }
+            else
+            {
+                _ballSpeedVector = (X: -1, Y: 1);
+            }
 
             _score = 0;
         }
