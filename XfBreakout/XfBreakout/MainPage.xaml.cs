@@ -26,14 +26,11 @@ namespace XfBreakout
 
                 is1stDraw = false;
             }
-
-
         }
 
         private void SKGLView_OnTouch(object sender, SKTouchEventArgs e)
         {
             
-
         }
 
         private void LeftButton_OnClicked(object sender, EventArgs e)
