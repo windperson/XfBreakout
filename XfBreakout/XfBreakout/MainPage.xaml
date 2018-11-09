@@ -12,13 +12,17 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <skia:SKGLView PaintSurface="SKGLView_OnPaintSurface"  
+        <skia:SKGLView x:Name="SkglView" 
+                       PaintSurface="SKGLView_OnPaintSurface"  
                        EnableTouchEvents="True"
                        Touch="SKGLView_OnTouch"/>
         <StackLayout Grid.Row="1" Orientation="Horizontal" HorizontalOptions="FillAndExpand">
-            <Button Text="&lt;&lt;" HorizontalOptions="CenterAndExpand" FontAttributes="Bold"  Clicked="LeftButton_OnClicked" />
-            <Button Text="Menu" x:Name="MenuBtn" HorizontalOptions="CenterAndExpand" FontAttributes="Bold" Clicked="MenuButton_OnClicked" />
-            <Button Text="&gt;&gt;" HorizontalOptions="CenterAndExpand" FontAttributes="Bold" Clicked="RightButton_OnClicked" />
+            <Button Text="&lt;&lt;" x:Name="LeftBtn" IsEnabled="False" 
+                    HorizontalOptions="CenterAndExpand" FontAttributes="Bold"  Clicked="LeftButton_OnClicked" />
+            <Button Text="Start" x:Name="GameStatusBtn" 
+                    HorizontalOptions="CenterAndExpand" FontAttributes="Bold" Clicked="StartButton_OnClicked" />
+            <Button Text="&gt;&gt;" x:Name="RightBtn" IsEnabled="False"
+                    HorizontalOptions="CenterAndExpand" FontAttributes="Bold" Clicked="RightButton_OnClicked" />
         </StackLayout>
     </Grid>
 

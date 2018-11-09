@@ -46,7 +46,7 @@ namespace XfBreakout
             
         }
 
-        private void MenuButton_OnClicked(object sender, EventArgs e)
+        private void StartButton_OnClicked(object sender, EventArgs e)
         {
             
         }
