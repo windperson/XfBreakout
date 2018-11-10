@@ -178,11 +178,11 @@ namespace XfBreakout
 
         private void InitGameTickerSubscription()
         {
-            _subscriptions.Add(_tickerStream.Subscribe( _ =>
-            {
-                GameTicker();
-                SkglView.InvalidateSurface();
-            }));
+            _subscriptions.Add(_tickerStream.Subscribe(_ =>
+           {
+               GameTicker();
+               SkglView.InvalidateSurface();
+           }));
         }
 
         private void InitArrowButtonSubscription()
@@ -291,7 +291,7 @@ namespace XfBreakout
 
         private void InitGameStatusSubscription()
         {
-            var sub =
+            var uiStateSub =
             _gameStatusTransitionStream.Subscribe(e =>
             {
                 if (e == (prev: GameStatus.Initial, next: GameStatus.Playing))
@@ -306,7 +306,6 @@ namespace XfBreakout
                     LeftBtn.IsEnabled = true;
                     RightBtn.IsEnabled = true;
                     GameStatusBtn.Text = "Pause";
-                    ResetGameData();
                 }
                 else
                 if (e == (prev: GameStatus.Playing, next: GameStatus.Paused))
@@ -327,7 +326,7 @@ namespace XfBreakout
                 {
                     LeftBtn.IsEnabled = false;
                     RightBtn.IsEnabled = false;
-                    GameStatusBtn.Text = "Replay";
+                    GameStatusBtn.Text = "Start";
                 }
                 else
                 if (e == (prev: GameStatus.GameOver, next: GameStatus.UnStart))
@@ -340,7 +339,15 @@ namespace XfBreakout
                 _gameStatus = e.next;
             });
 
-            _subscriptions.Add(sub);
+            var gameStatusSub = _gameStatusTransitionStream.Subscribe(e =>
+            {
+                if (e == (prev: GameStatus.UnStart, next: GameStatus.Playing))
+                {
+                    ResetGameData();
+                }
+            });
+
+            _subscriptions.AddRange(new[] { uiStateSub, gameStatusSub });
         }
 
         private void DrawScore(SKCanvas canvas)
@@ -460,9 +467,9 @@ namespace XfBreakout
 
             // Convert Left to -1, Right to 1 to indicate whether left or right button clicked
             var leftBtnStream = Observable
-                .FromEventPattern(ev => LeftBtn.Clicked += ev, ev => LeftBtn.Clicked -= ev).Select( _ => -1);
+                .FromEventPattern(ev => LeftBtn.Clicked += ev, ev => LeftBtn.Clicked -= ev).Select(_ => -1);
             var rightBtnStream = Observable
-                .FromEventPattern(ev => RightBtn.Clicked += ev, ev => RightBtn.Clicked -= ev).Select( _ => 1);
+                .FromEventPattern(ev => RightBtn.Clicked += ev, ev => RightBtn.Clicked -= ev).Select(_ => 1);
             _arrowButtonStream = leftBtnStream.Merge(rightBtnStream);
 
             _gameStatusTransitionStream = Observable
